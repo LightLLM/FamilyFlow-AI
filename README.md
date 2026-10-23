@@ -6,9 +6,36 @@ FamilyFlow is a family coordination and adventure product for the [Amazon Device
 
 **Privacy boundary:** Parents see **FamilyFlow activity only** — not unrelated Alexa conversations, Amazon purchases, or third-party Fire TV apps.
 
-**GitHub:** https://github.com/LightLLM/FamilyFlow-AI  
+**GitHub (public):** https://github.com/LightLLM/FamilyFlow-AI  
 **Landing page:** https://familyflow-ecru.vercel.app  
 **Owner:** LightLLM · **Last status update:** 2026-10-23
+
+---
+
+## Amazon developer services used
+
+FamilyFlow is built on **Amazon Developer** and **AWS** products end to end. These are the services this app uses today:
+
+| Amazon / AWS service | How FamilyFlow uses it |
+|----------------------|------------------------|
+| **Amazon Alexa** (Alexa Skills Kit / Developer Console) | Custom skill **FamilyFlow** (`amzn1.ask.skill.ffe35052-4f43-45e1-96b1-836ac69ff352`), invocation **family flow** — suggest / request adventures and check status with parent approval |
+| **Alexa+ / MCP (preview)** | `apps/alexa-plus-mcp` Streamable HTTP MCP server for agentic / Alexa+ hackathon track |
+| **Amazon Fire TV / Vega OS** | Living-room client target; Appstore publish path + Vega Virtual Device; interim 10-ft browser shell for API/D-pad |
+| **Amazon Cognito** | Parent identity (User Pool + Hosted UI); JWT authorizer for parent API; intended Alexa **account linking** OAuth |
+| **Amazon API Gateway** | HTTP API front door to the FamilyFlow backend |
+| **AWS Lambda** | Node.js 22 runtimes for FamilyFlow **API** and **Alexa skill** adapters |
+| **Amazon DynamoDB** | Single-table household / missions / approvals / pairing / audit store (on-demand) |
+| **Amazon Bedrock** | Optional structured adventure suggestions (`Converse` + JSON schema); curated library fallback when disabled |
+| **AWS CDK** | Infrastructure as code for the sandbox stack (`FamilyFlowSandbox`) |
+| **Amazon CloudWatch** | Lambda / API logs (short retention in sandbox) |
+| **AWS Budgets** | Cost guardrail (~$25/month alert on the sandbox stack) |
+| **Amazon Developer Console** | Skill creation, interaction model, simulator testing, and (planned) Fire TV / Appstore submission |
+
+Official consoles:
+
+- [Amazon Developer](https://developer.amazon.com/) · [Alexa Developer Console](https://developer.amazon.com/alexa/console/ask) · [AWS Console](https://console.aws.amazon.com/)
+
+Publish checklist: [`docs/AMAZON_PUBLISH_GUIDE.md`](docs/AMAZON_PUBLISH_GUIDE.md)
 
 ---
 
