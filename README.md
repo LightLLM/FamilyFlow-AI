@@ -7,16 +7,18 @@ FamilyFlow is a family coordination and adventure product for the [Amazon Device
 **Privacy boundary:** Parents see **FamilyFlow activity only** — not unrelated Alexa conversations, Amazon purchases, or third-party Fire TV apps.
 
 **GitHub:** https://github.com/LightLLM/FamilyFlow-AI  
+**Landing page:** https://familyflow-ecru.vercel.app  
 **Owner:** LightLLM · **Last status update:** 2026-10-23
 
 ---
 
 ## What’s finished (live status)
 
-### Repository
+### Repository & marketing site
 
 - Public repo pushed: https://github.com/LightLLM/FamilyFlow-AI (`main`)
-- Monorepo: parent web, Fire TV shell, Alexa skill, Alexa+ MCP, API, domain/shared packages, CDK infra
+- Customer landing (Vercel): https://familyflow-ecru.vercel.app — source `apps/landing`
+- Monorepo: parent web, landing, Fire TV shell, Alexa skill, Alexa+ MCP, API, domain/shared packages, CDK infra
 
 ### Automated tests (2026-10-23)
 
@@ -151,6 +153,7 @@ sequenceDiagram
 ## Monorepo layout
 
 ```
+apps/landing          Public marketing site (Vercel)
 apps/parent-web       Unified parent dashboard (approvals, planner, Bedrock suggest, privacy)
 apps/fire-tv          10-foot TV shell + Vega publish notes
 apps/alexa            ASK custom skill + local simulator

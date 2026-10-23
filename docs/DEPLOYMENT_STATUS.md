@@ -2,6 +2,7 @@
 
 **Date:** 2026-10-23  
 **GitHub:** https://github.com/LightLLM/FamilyFlow-AI  
+**Landing:** https://familyflow-ecru.vercel.app (`apps/landing` on Vercel)  
 **AWS account:** `134553439892` (us-east-1)
 
 ## Automated verification (this machine)
