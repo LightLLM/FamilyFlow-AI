@@ -122,57 +122,157 @@ Full checklist: [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) · publ
 
 ---
 
-## Workflow diagram
+## Amazon architecture & data workflow
+
+FamilyFlow is an **Amazon Developer + AWS** product. Clients on Amazon devices/voice hit AWS APIs; household state lives in DynamoDB; optional AI is Bedrock.
+
+### System map (Amazon services)
 
 ```mermaid
-flowchart LR
-  subgraph Clients
-    WEB[Parent Web<br/>Next.js]
-    TV[Fire TV / Vega<br/>or 10-ft shell]
-    AX[Alexa ASK Skill]
-    MCP[Alexa+ MCP]
+flowchart TB
+  subgraph AmazonDev["Amazon Developer surfaces"]
+    FTV["Amazon Fire TV / Vega OS<br/>device pairing + missions"]
+    ASK["Amazon Alexa custom skill<br/>ASK · invocation: family flow"]
+    MCP["Alexa+ MCP preview<br/>Streamable HTTP tools"]
+    CONSOLE["Amazon Developer Console<br/>skill · Appstore path"]
   end
 
-  subgraph AWS
-    APIGW[API Gateway HTTP API]
-    COG[Cognito JWT]
-    LAMBDA[Lambda Node 22]
-    DDB[(DynamoDB)]
-    BR[Bedrock]
-    CW[CloudWatch]
+  subgraph ParentSide["Parent experience"]
+    WEB["Parent web dashboard<br/>approvals · planner · privacy"]
   end
 
-  WEB -->|JWT| APIGW
-  TV -->|device session Bearer| APIGW
-  AX -->|account-linked token| APIGW
+  subgraph AWS["AWS account — FamilyFlowSandbox"]
+    COG["Amazon Cognito<br/>User Pool + Hosted UI<br/>parent JWT / account linking"]
+    APIGW["Amazon API Gateway<br/>HTTP API"]
+    APIL["AWS Lambda<br/>FamilyFlow API · Node 22"]
+    AXL["AWS Lambda<br/>Alexa skill adapter"]
+    DDB[("Amazon DynamoDB<br/>single-table FamilyFlow")]
+    BR["Amazon Bedrock<br/>Converse · optional suggestions"]
+    CW["Amazon CloudWatch Logs"]
+    BUD["AWS Budgets · $25 alert"]
+    CDK["AWS CDK · infra as code"]
+  end
+
+  CONSOLE -.-> ASK
+  CONSOLE -.-> FTV
+  WEB -->|Cognito JWT| APIGW
+  FTV -->|device session Bearer| APIGW
+  ASK --> AXL
+  AXL -->|linked access token| APIGW
   MCP -->|access token| APIGW
   APIGW --> COG
-  APIGW --> LAMBDA
-  LAMBDA --> DDB
-  LAMBDA -->|optional| BR
-  LAMBDA --> CW
+  APIGW --> APIL
+  APIL --> DDB
+  APIL -.->|optional| BR
+  APIL --> CW
+  AXL --> CW
+  CDK --> AWS
+  BUD -.-> AWS
 ```
 
-### Happy-path sequence
+### App data in Amazon DynamoDB
+
+Single-table design (`PK` / `SK` + GSIs). Parents only ever see **FamilyFlow** rows for their household—not Alexa history or Amazon retail data.
+
+```mermaid
+erDiagram
+  HOUSEHOLD ||--o{ MEMBER : contains
+  HOUSEHOLD ||--o{ MISSION : catalogs
+  HOUSEHOLD ||--o{ DEVICE_SESSION : pairs
+  HOUSEHOLD ||--o{ AUDIT_EVENT : records
+  MEMBER ||--o{ MISSION_REQUEST : requests
+  MISSION ||--o{ MISSION_REQUEST : targets
+  MISSION_REQUEST ||--o| COMPLETION : may_complete
+  HOUSEHOLD ||--o{ REWARD : unlocks
+
+  HOUSEHOLD {
+    string id PK
+    string ownerId "Cognito sub"
+    string timezone
+    object settings "voice AI rewards pairing flags"
+  }
+  MEMBER {
+    string id
+    string role "parent|child"
+    string ageBand "not birth date"
+    bool visibilityNoticeAck
+  }
+  MISSION {
+    string id
+    string title
+    string status "available|pending|approved|..."
+    string source "curated|bedrock"
+  }
+  MISSION_REQUEST {
+    string id
+    string status "pending|approved|rejected"
+    string source "fire_tv|alexa"
+  }
+  COMPLETION {
+    string id
+    string status
+    int pointsAwarded "exactly once"
+  }
+  DEVICE_SESSION {
+    string id
+    string pairingHash
+    string sessionTokenHash
+  }
+  REWARD {
+    string id
+    int pointsThreshold
+    string title "non-purchasable"
+  }
+  AUDIT_EVENT {
+    string type
+    string actorType
+    object metadata "sanitized allowlist"
+  }
+```
+
+| Data | Stored on | Notes |
+|------|-----------|--------|
+| Parent identity | **Amazon Cognito** | Email sign-in; JWT to API Gateway |
+| Household, children, missions, approvals, rewards, audit | **Amazon DynamoDB** | On-demand single table |
+| TV pairing sessions | **DynamoDB** (hashed codes / tokens) | No parent password on Fire TV |
+| Optional adventure AI JSON | **Amazon Bedrock** → then DynamoDB | Never auto-bypasses parent approval |
+| Skill utterance handling | **Alexa** → **Lambda** → API | Account-linked Cognito token in production |
+| Logs / cost guard | **CloudWatch** / **Budgets** | Sandbox observability |
+
+### Happy-path sequence (Amazon-named)
 
 ```mermaid
 sequenceDiagram
-  participant Kid as Child TV / Alexa
-  participant API as FamilyFlow API
-  participant Parent as Parent Web
-  participant AI as Bedrock optional
+  actor Parent as Parent web
+  actor Kid as Fire TV / Alexa
+  participant Cog as Amazon Cognito
+  participant APIGW as API Gateway
+  participant L as Lambda API
+  participant DDB as DynamoDB
+  participant BR as Bedrock optional
+  participant ASK as Alexa skill Lambda
 
-  Parent->>API: Create household + child profiles
-  Parent->>API: Generate pairing code
-  Kid->>API: Pair TV with code
-  Parent->>AI: Suggest adventure JSON
-  AI-->>Parent: Plan labeled AI or curated
-  Kid->>API: Request adventure pending
-  Parent->>API: Approve request
-  Kid->>API: See approved mission on TV
-  Kid->>API: Request completion
-  Parent->>API: Verify completion → points once
-  Parent->>API: View audit timeline
+  Parent->>Cog: Sign in Hosted UI
+  Cog-->>Parent: JWT
+  Parent->>APIGW: Create household + child age band
+  APIGW->>L: authorize JWT
+  L->>DDB: put Household Member Missions
+  Parent->>APIGW: Generate TV pairing code
+  L->>DDB: store hashed code
+  Kid->>APIGW: POST /devices/pair
+  L->>DDB: create DeviceSession
+  Parent->>APIGW: Suggest adventure
+  L->>BR: Converse structured JSON
+  BR-->>L: plan or curated fallback
+  L->>DDB: save Mission source bedrock|curated
+  Kid->>ASK: Alexa open family flow / request adventure
+  ASK->>APIGW: Bearer linked Cognito token
+  L->>DDB: MissionRequest pending
+  Parent->>APIGW: Approve request
+  L->>DDB: mission approved + audit
+  Kid->>APIGW: complete-request device Bearer
+  Parent->>APIGW: Verify completion
+  L->>DDB: points once + reward unlock check
 ```
 
 ---
