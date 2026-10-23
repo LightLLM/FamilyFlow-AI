@@ -7,6 +7,72 @@ FamilyFlow is a family coordination and adventure product for the [Amazon Device
 **Privacy boundary:** Parents see **FamilyFlow activity only** — not unrelated Alexa conversations, Amazon purchases, or third-party Fire TV apps.
 
 **GitHub:** https://github.com/LightLLM/FamilyFlow-AI  
+**Owner:** LightLLM · **Last status update:** 2026-10-23
+
+---
+
+## What’s finished (live status)
+
+### Repository
+
+- Public repo pushed: https://github.com/LightLLM/FamilyFlow-AI (`main`)
+- Monorepo: parent web, Fire TV shell, Alexa skill, Alexa+ MCP, API, domain/shared packages, CDK infra
+
+### Automated tests (2026-10-23)
+
+| Suite | Result |
+|-------|--------|
+| Unit — domain, API, fire-tv, alexa, alexa-plus-mcp | **PASS 28/28** |
+| E2E — API + Fire TV device session + Alexa local handlers | **PASS 17/17** (`scripts/e2e-fire-tv-alexa.sh`) |
+| Vega Virtual Device / physical Fire TV | **Not executed** (needs Apple Silicon + VDT) |
+| Alexa Console simulator (launch) | **PASS** — `open family flow` returns Welcome speech |
+
+### AWS sandbox — deployed (`FamilyFlowSandbox`, us-east-1, account `134553439892`)
+
+| Output | Value |
+|--------|-------|
+| API | https://tyyke5nlm3.execute-api.us-east-1.amazonaws.com |
+| Health | `GET /health` → `{"ok":true,"mode":"aws","product":"FamilyFlow AI"}` |
+| Cognito User Pool | `us-east-1_0ifoFYaCz` |
+| Cognito App Client | `2osuui7r8vsnrbv6l9lhkdtugl` |
+| Cognito Hosted UI | https://familyflow-134553439892.auth.us-east-1.amazoncognito.com |
+| DynamoDB table | `FamilyFlowSandbox-FamilyFlowTable9CF27E1C-WP4DTW24L7GN` |
+| API Lambda | Node 22 · `FAMILYFLOW_MODE=aws` · `ALLOW_LOCAL_DEV_AUTH=false` |
+| Alexa skill Lambda | `arn:aws:lambda:us-east-1:134553439892:function:FamilyFlowSandbox-AlexaSkillFn2AEF2519-n5kQoGba5n5o` |
+| Budget alert | $25/month (`FamilyFlowSandboxBudget`) |
+
+Production-aligned API Gateway:
+
+- Cognito JWT on parent routes
+- Device session routes (`/devices/*`, mission request/complete) open at gateway; **device bearer verified in Lambda** (no parent passwords on TV)
+
+Reviewer Cognito parent user: `parent@familyflow.demo` (password held by operator — not committed).
+
+### Alexa Developer Console — skill created
+
+| Field | Value |
+|-------|--------|
+| Skill name | FamilyFlow |
+| Skill ID | `amzn1.ask.skill.ffe35052-4f43-45e1-96b1-836ac69ff352` |
+| Type | Custom · Provision your own |
+| Invocation | `family flow` |
+| Endpoint | Alexa skill Lambda above (invoke permission scoped to this skill ID) |
+| Interaction model | Uploaded from `apps/alexa/skill-package/interactionModels/custom/en-US.json` |
+| Console | [Open skill](https://developer.amazon.com/alexa/console/ask/build/custom/amzn1.ask.skill.ffe35052-4f43-45e1-96b1-836ac69ff352/development/en_US/dashboard) |
+| Simulator check | Development testing on · launch utterance succeeded |
+
+### Still remaining (owner)
+
+1. **Alexa account linking** (Build → Account linking) → Cognito OAuth  
+   - Auth: `{CognitoHostedUI}/oauth2/authorize`  
+   - Token: `{CognitoHostedUI}/oauth2/token`  
+   - Client ID: `2osuui7r8vsnrbv6l9lhkdtugl` · scopes `openid email profile`  
+   - Copy Alexa Redirect URLs into Cognito app client callbacks  
+2. Linked-account simulator: `suggest an adventure` / `request the adventure` → parent approve on web  
+3. **Fire TV / Vega Appstore** binary on Apple Silicon + device test (browser shell is not an Appstore binary)  
+4. Host parent web on HTTPS; extend CORS beyond localhost  
+
+Full checklist: [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) · publish guide: [`docs/AMAZON_PUBLISH_GUIDE.md`](docs/AMAZON_PUBLISH_GUIDE.md)
 
 ---
 
@@ -129,7 +195,7 @@ Local auth (development only): `Authorization: Bearer local:local-parent-001`
 | Unit / domain | `bash scripts/run-tests.sh` |
 | Fire TV browser shell | `:3200` after pair code from dashboard |
 | **Vega Virtual Device** | Install VDT → `vega virtual-device start` → run Vega-packaged app (see below) |
-| **Alexa Developer Console** | `ask configure` → import skill model → account link Cognito → Console simulator |
+| **Alexa Developer Console** | Skill live (see status above); finish Cognito account linking, then simulator |
 | Alexa local | `pnpm --filter @familyflow/alexa simulate:local RequestAdventure` |
 | Alexa+ MCP | `pnpm --filter @familyflow/alexa-plus-mcp start` → `http://127.0.0.1:3300/mcp` |
 | Bedrock | Enable model access → `BEDROCK_ENABLED=true` → Suggest in planner |
@@ -160,9 +226,11 @@ Guide: [`docs/BEDROCK_SETUP.md`](docs/BEDROCK_SETUP.md)
 
 ## AWS deploy (your account)
 
+**Already deployed** for LightLLM sandbox — see [What’s finished](#whats-finished-live-status). To redeploy or recreate:
+
 ```bash
-# Install AWS CLI, aws configure, enable Bedrock if desired
-./.tools/pnpm-bin --filter @familyflow/api build
+pnpm --filter @familyflow/api build
+pnpm --filter @familyflow/alexa build
 cd infra && npx cdk synth
 npx cdk deploy FamilyFlowSandbox -c budgetEmail=you@example.com
 ```
@@ -195,6 +263,8 @@ Costs / teardown: [`docs/AWS_COSTS_AND_TEARDOWN.md`](docs/AWS_COSTS_AND_TEARDOWN
 | [`docs/E2E_FIRE_TV_ALEXA_RESULTS.md`](docs/E2E_FIRE_TV_ALEXA_RESULTS.md) | Latest E2E results |
 | [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | Honest gaps |
 | [`docs/HACKATHON_SUBMISSION.md`](docs/HACKATHON_SUBMISSION.md) | Devpost package |
+| [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) | Live AWS + Alexa Console status |
+| [`docs/AMAZON_PUBLISH_GUIDE.md`](docs/AMAZON_PUBLISH_GUIDE.md) | Appstore / Alexa / web publish |
 
 ---
 

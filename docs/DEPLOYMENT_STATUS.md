@@ -11,7 +11,7 @@
 | Unit (domain, api, fire-tv, alexa, alexa-plus-mcp) | **PASS 28/28** |
 | E2E Fire TV device session + Alexa local | **PASS 17/17** |
 | Vega Virtual Device / physical Fire TV | **NOT EXECUTED** (VDT not on Windows host) |
-| Alexa Developer Console simulator | **NOT EXECUTED** (needs `ask configure` + browser login) |
+| Alexa Developer Console simulator (launch) | **PASS** — `open family flow` Welcome response |
 
 ## AWS sandbox (CDK) — DEPLOYED
 
