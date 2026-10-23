@@ -123,16 +123,40 @@ export class FamilyFlowStack extends cdk.Stack {
 
     const integration = new integrations.HttpLambdaIntegration("ApiIntegration", fn);
 
+    // Unauthenticated / device-session routes (auth enforced in Lambda for device bearer tokens).
+    // Amazon Fire TV path must not require parent Cognito JWT on the living-room client.
+    httpApi.addRoutes({
+      path: "/health",
+      methods: [apigwv2.HttpMethod.GET],
+      integration,
+    });
     httpApi.addRoutes({
       path: "/devices/pair",
       methods: [apigwv2.HttpMethod.POST],
       integration,
     });
     httpApi.addRoutes({
-      path: "/health",
+      path: "/devices/me",
       methods: [apigwv2.HttpMethod.GET],
       integration,
     });
+    httpApi.addRoutes({
+      path: "/devices/{sessionId}/missions",
+      methods: [apigwv2.HttpMethod.GET],
+      integration,
+    });
+    httpApi.addRoutes({
+      path: "/missions/{id}/request",
+      methods: [apigwv2.HttpMethod.POST],
+      integration,
+    });
+    httpApi.addRoutes({
+      path: "/missions/{id}/complete-request",
+      methods: [apigwv2.HttpMethod.POST],
+      integration,
+    });
+
+    // Parent / Cognito-protected routes
     httpApi.addRoutes({
       path: "/{proxy+}",
       methods: [

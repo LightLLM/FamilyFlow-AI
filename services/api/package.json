@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/lambda.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ./scripts/bundle-lambda.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx watch src/local/server.ts",
     "start": "tsx src/local/server.ts",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.147",
     "@types/node": "^22.13.10",
+    "esbuild": "0.25.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

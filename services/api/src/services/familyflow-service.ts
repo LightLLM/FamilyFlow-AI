@@ -50,12 +50,27 @@ import type { AuthContext } from "../lib/auth.js";
 import type { IdempotencyStore } from "../lib/idempotency.js";
 import type { FamilyFlowRepository } from "../lib/repository.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+function moduleDir(): string {
+  // CJS Lambda bundle exposes __dirname; local tsx ESM uses import.meta.url.
+  try {
+    // @ts-expect-error CJS global when bundled
+    if (typeof __dirname === "string") return __dirname;
+  } catch {
+    /* ignore */
+  }
+  try {
+    return dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+}
 
 function loadCuratedLibrary(): AdventurePlan[] {
+  const base = moduleDir();
   const candidates = [
-    join(__dirname, "../../../../curated-missions/library.json"),
     join(process.cwd(), "curated-missions/library.json"),
+    join(base, "curated-missions/library.json"),
+    join(base, "../../../../curated-missions/library.json"),
     join(process.cwd(), "../../curated-missions/library.json"),
   ];
   for (const p of candidates) {
