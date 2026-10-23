@@ -33,25 +33,28 @@ Production-aligned settings in Lambda:
 
 Reviewer Cognito parent (created in pool): `parent@familyflow.demo` — password set separately by operator (do not commit).
 
-## Amazon Developer Console — remaining owner steps
+## Amazon Developer Console — Alexa skill (in progress)
 
-Follow official docs; policies change. High-level checklist from `docs/AMAZON_PUBLISH_GUIDE.md`:
+**Skill created:** `amzn1.ask.skill.ffe35052-4f43-45e1-96b1-836ac69ff352`  
+**Name:** FamilyFlow · Custom · Provision your own  
+**Invocation:** `family flow`  
+**Endpoint Lambda:** `FamilyFlowSandbox-AlexaSkillFn2AEF2519-n5kQoGba5n5o` (skill-ID-scoped invoke permission)  
+**Interaction model:** uploaded from repo JSON; build triggered in Console  
 
-### Alexa custom skill
+Console: https://developer.amazon.com/alexa/console/ask/build/custom/amzn1.ask.skill.ffe35052-4f43-45e1-96b1-836ac69ff352/development/en_US/dashboard
 
-1. Open https://developer.amazon.com/alexa/console/ask and sign in with the Amazon Developer account.
-2. Create a custom skill; set invocation name to **family flow**.
-3. Upload interaction model from `apps/alexa/skill-package/interactionModels/custom/en-US.json`.
-4. Endpoint: host ASK SDK Lambda (or adapter) with `FAMILYFLOW_API_BASE_URL` = ApiUrl above.
-5. **Account linking** to Cognito OAuth (same User Pool / Client) — never authenticate by spoken child name.
-6. Test in Console simulator → confirm pending approval in parent web.
-7. Submit for certification only after privacy policy URL + account linking pass Alexa checklist.
+### Remaining Alexa steps (owner click-through)
 
-Local CLI (after browser login):
-
-```bash
-ask configure
-```
+1. **Test tab** → set skill testing to **Development**.
+2. **Account linking** (Build → Account linking):
+   - Auth Code Grant
+   - Authorization URI: `{CognitoDomain}/oauth2/authorize`
+   - Access Token URI: `{CognitoDomain}/oauth2/token`
+   - Client ID: `UserPoolClientId` above (no secret)
+   - Scopes: `openid email profile`
+   - Copy Alexa **Redirect URLs** into Cognito app client Callback URLs (plus `http://localhost:3000/auth/callback`)
+3. Simulator: `open family flow` → link account with `parent@familyflow.demo` → `suggest an adventure` / `request the adventure`
+4. Confirm pending approval in parent dashboard against live API.
 
 ### Fire TV / Vega (Appstore)
 

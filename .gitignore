@@ -31,3 +31,5 @@ apps/alexa-plus-mcp/node_modules/
 cdk-outputs.json
 ask-configure-out.txt
 .tools/
+
+alexa-deploy.json

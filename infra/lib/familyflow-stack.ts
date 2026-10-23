@@ -40,12 +40,18 @@ export class FamilyFlowStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Hosted UI domain required for Alexa account linking (Cognito OAuth).
+    const cognitoDomain = userPool.addDomain("ParentAuthDomain", {
+      cognitoDomain: { domainPrefix: `familyflow-${this.account}`.slice(0, 63).toLowerCase() },
+    });
+
     const userPoolClient = userPool.addClient("ParentWebClient", {
       authFlows: { userPassword: true, userSrp: true },
       generateSecret: false,
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
+        // Alexa Console Redirect URLs are added after skill creation (see deploy script).
         callbackUrls: ["http://localhost:3000/auth/callback"],
         logoutUrls: ["http://localhost:3000/"],
       },
@@ -193,9 +199,30 @@ export class FamilyFlowStack extends cdk.Stack {
       ],
     });
 
+    const alexaFn = new lambda.Function(this, "AlexaSkillFn", {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "index.handler",
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../apps/alexa/dist")),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(15),
+      environment: {
+        FAMILYFLOW_API_BASE_URL: httpApi.apiEndpoint,
+      },
+      logRetention: logs.RetentionDays.ONE_WEEK,
+    });
+    // Broad Alexa invoke permission; tighten to skill ID after Console create.
+    alexaFn.addPermission("AlexaSkillInvoke", {
+      principal: new iam.ServicePrincipal("alexa-appkit.amazon.com"),
+      action: "lambda:InvokeFunction",
+    });
+
     new cdk.CfnOutput(this, "ApiUrl", { value: httpApi.apiEndpoint });
     new cdk.CfnOutput(this, "UserPoolId", { value: userPool.userPoolId });
     new cdk.CfnOutput(this, "UserPoolClientId", { value: userPoolClient.userPoolClientId });
     new cdk.CfnOutput(this, "TableName", { value: table.tableName });
+    new cdk.CfnOutput(this, "CognitoDomain", {
+      value: `https://${cognitoDomain.domainName}.auth.${this.region}.amazoncognito.com`,
+    });
+    new cdk.CfnOutput(this, "AlexaSkillLambdaArn", { value: alexaFn.functionArn });
   }
 }
